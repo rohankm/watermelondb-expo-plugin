@@ -18,20 +18,50 @@ function setAndroidMainApplication(config: ExportedConfigWithProps) {
     "android",
     async (config) => {
       const root = config.modRequest.platformProjectRoot;
-      const filePath = `${root}/app/src/main/java/${config?.android?.package?.replace(
+      let filePath = `${root}/app/src/main/java/${config?.android?.package?.replace(
         /\./g,
         "/"
       )}/MainApplication.java`;
 
-      const contents = await fs.readFile(filePath, "utf-8");
+      let  contents = await fs.readFile(filePath, "utf-8");
 
       let updated = insertLinesHelper(
-        "import com.nozbe.watermelondb.WatermelonDBPackage;",
+        `import com.nozbe.watermelondb.jsi.WatermelonDBJSIPackage; 
+        import com.facebook.react.bridge.JSIModulePackage;`,
         "import java.util.List;",
         contents
       );
+       updated = insertLinesHelper(
+        `@Override
+        protected JSIModulePackage getJSIModulePackage() {
+          return new WatermelonDBJSIPackage(); 
+        }`,
+        "new ReactNativeHostWrapper(this, new DefaultReactNativeHost(this) {",
+        updated
+      );
 
       await fs.writeFile(filePath, updated);
+
+
+       filePath = `${root}/app/build.gradle`;
+
+        contents = await fs.readFile(filePath, "utf-8");
+
+       updated = insertLinesHelper(
+        `packagingOptions {
+          pickFirst '**/libc++_shared.so' 
+       }`,
+        "android {",
+        contents
+      );
+       updated = insertLinesHelper(
+        `implementation project(':watermelondb-jsi')`,
+        "dependencies {",
+        updated
+      );
+
+      await fs.writeFile(filePath, updated);
+
 
       return config;
     },
